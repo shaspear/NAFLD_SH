@@ -40,8 +40,11 @@ class MILDataset(Dataset):
     def __len__(self):
         return len(self.data_info)
 
+    '''
+    # this function has been discarded
+    '''
     @staticmethod
-    def sample_images(image_files, group_size=10):
+    def sample_images_discarded(image_files, group_size=10):
         # 如果图片数量少于group_size，则直接返回所有图片
         if len(image_files) < group_size:
             return [image_files]
