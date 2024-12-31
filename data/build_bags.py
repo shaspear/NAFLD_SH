@@ -37,8 +37,8 @@ def traverse_directory(directory):
         for file in files:
             #if counter > 10:
             #    break
-            if 'ignore' in root:
-                continue
+            # if 'ignore' in root:
+            #     continue
             if file.endswith('.png'):
                 #print(, file[:-4].split('_'))
                 slide, x, y = file[:-4].split('_')

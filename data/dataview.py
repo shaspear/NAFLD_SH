@@ -13,7 +13,7 @@ import torch
 from PIL import Image
 import torchvision.transforms as transforms
 
-from local_tools.MIL_Dataset import MILDataset
+from local_tools.MIL_Dataset_b import MILDataset
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 # 数据预处理
 data_transforms = {
@@ -96,24 +96,24 @@ def draw2x2bar(**kwargs):
 查看多示例中包（bag）的正负标签分布情况
 '''
 def view_mtl_bags():
-    data_dir = r'E:\myproject\nafld\data\outputs\bags'
+    data_dir = r'./outputs/bags'
     dataset = MILDataset(data_dir, transform=data_transforms['train'])
     train_loader = DataLoader(dataset, batch_size=1, shuffle=True)
-    ballooning = {x:0 for x in range(2)}
-    inflammation = {x:0 for x in range(5)}
-    fibrosis = {x:0 for x in range(3)}
-    steatosis = {x:0 for x in range(3)}
+    ballooning = {x:0 for x in range(3)}
+    inflammation = {x:0 for x in range(6)}
+    fibrosis = {x:0 for x in range(4)}
+    steatosis = {x:0 for x in range(4)}
 
     for bags, l1, l2, l3, l4 in tqdm(train_loader):
         ballooning[l1.item()] += 1
         inflammation[l2.item()] += 1
         fibrosis[l3.item()] += 1
         steatosis[l4.item()] += 1
-
-    print(ballooning)
-    print(inflammation)
-    print(fibrosis)
-    print(steatosis)
+    #
+    # print(ballooning)
+    # print(inflammation)
+    # print(fibrosis)
+    # print(steatosis)
     draw2x2bar(ballooning=ballooning, inflammation=inflammation, fibrosis=fibrosis, steatosis=steatosis)
 
 view_mtl_bags()
