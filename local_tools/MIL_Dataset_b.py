@@ -126,6 +126,52 @@ class MILDataset(Dataset):
         MILDataset.calc_dict_len(slide_id, i, "inflammation")
         MILDataset.calc_dict_len(slide_id, s, "steatosis")
         return b, f, i, s
+
+    @staticmethod
+    def parse_data_PosNeg(img_names):
+
+        if len(img_names) < 1:
+            return [], [], [], [], []
+        slide_id = img_names[0].split('\\')[-2]
+
+        b = []  # ballooning
+        f = []  # fibrosis
+        i = []  # inflammation
+        s = []  # steatosis
+        neg = []
+        for fn in img_names:
+            if "ignore" in fn:
+                if slide_id not in ['38', '15', '161', '167', '173', '184', '215', '229', '238', '247', '253', '255', '256', '258']:
+                    continue
+                 #print(fn)
+            t, l = fn[:-4].split('_')[-2:]
+
+            if t == 'steatosis':
+                l = int(l) if l.isdigit() else 3
+                if l > 5:
+                    s.append(fn)
+                else:
+                    neg.append(fn)
+            elif t == "ballooning":
+                l = int(l) if l.isdigit() else 2
+                if l == 1:
+                    b.append(fn)
+                else:
+                    neg.append(fn)
+            elif t == "inflammation":
+                l = int(l) if l.isdigit() else 3
+                if l > 0 and l < 3:
+                    i.append(fn)
+                else:
+                    neg.append(fn)
+            else:
+                l = int(l) if l.isdigit() else 5
+                if l > 0 and l < 5:
+                    f.append(fn)
+                else:
+                    neg.append(fn)
+        print(f"Slide:{slide_id} has positive tiles count: b-{len(b)}, f-{len(f)}, i-{len(i)}, s-{len(s)}")
+        return b, f, i, s, neg
     @staticmethod
     def get_img_info_balanced(data_dir):
         slides = {}
@@ -137,8 +183,8 @@ class MILDataset(Dataset):
 
             # 遍历类别
             for sub_dir in dirs:
-                if sub_dir != '2':# only read images of folder 1
-                    continue
+                # if sub_dir != '10':# only read images of folder 1
+                #     continue
                 img_names = os.listdir(os.path.join(root, sub_dir))
                 img_names = list(filter(lambda x: x.endswith('.png'), img_names))
                 img_names = [os.path.join(root, sub_dir, f) for f in img_names]
@@ -161,26 +207,87 @@ class MILDataset(Dataset):
             #     data_info.append((path_img, int(label)))
         #print(counter)
         return image_groups
+    '''
+    Parameter：
+    lDict 是以label为键，值为image path的list
+    return:
+    尽量选出1个阳性样本，如果没有，则返回阴性样本，都没有返回ignore样本
+    '''
+    @staticmethod
+    def get_positive_tile(lDict:dict):
+        length = len(lDict)
+        for i in range(1, length-1):
+            if len(lDict[i]) > 0:
+                return lDict[i].pop()
+        if len(lDict[0] > 0):
+            return lDict[0].pop()
+        if len(lDict[length-1])>0:
+            return lDict[length-1].pop()
+        return None
+
+    @staticmethod
+    def get_positive_tile(lDict: list, k: int):
+        length = len(lDict)
+        if len(lDict) > 0:
+            #return lDict.pop()
+            return random.sample(lDict, 1)
+        return None
+
+    @staticmethod
+    def sample_tiles(b:[], f:[], i:[], s:[], k: int):
+        group = []
+
+        ffn = MILDataset.get_positive_tile(b, k)
+        if ffn:
+            group.extend(ffn)
+        ffn = MILDataset.get_positive_tile(f, k)
+        if ffn:
+            group.extend(ffn)
+        ffn = MILDataset.get_positive_tile(i, k)
+        if ffn:
+            group.extend(ffn)
+        ffn = MILDataset.get_positive_tile(s, k)
+        if ffn:
+            group.extend(ffn)
+        return group
+
+
 
     @staticmethod
     def sample_balanced_groups(image_files, num_groups=10, group_size=3):
         # 获取所有图片文件名
         # image_files = [f for f in os.listdir(image_folder) if os.path.isfile(os.path.join(image_folder, f))]
         random.shuffle(image_files)  # 打乱顺序以确保随机性
-        b, f, i, s = MILDataset.parse_data_intodicts(image_files)
+        #b, f, i, s = MILDataset.parse_data_intodicts(image_files)
+        b, f, i, s, neg = MILDataset.parse_data_PosNeg(image_files)
+        if len(b) == 0:
+            num_groups = math.ceil(num_groups*0.8)
+        if len(f) == 0:
+            num_groups = math.ceil(num_groups*0.8)
+        if len(i) == 0:
+            num_groups = math.ceil(num_groups*0.8)
+        if len(s) == 0:
+            num_groups = math.ceil(num_groups*0.8)
         # 初始化图片组列表
         image_groups = []
         seen_groups = set()  # 用于存储已见过的组，以确保不重复
         counter = 0
+        counter_f5 = 0 #控制fibrosis=5的数量
+        counter_s0 = 0  # 控制steatosis=0的数量
         # 不断地随机采样，直到获得所需数量的不重复组
         while len(image_groups) < num_groups:
-            # 随机选择3张图片
             if counter > num_groups:
                 break
-            # print(len(image_files), group_size, image_files[0])
             if len(image_files) < group_size:
                 break
-            group = random.sample(image_files, group_size)
+            group = MILDataset.sample_tiles(b, f, i, s, 1)
+            #print(f"sample_tiles get {len(group)} positive samples")
+            if len(neg)<group_size-len(group):
+                print(image_files[0])
+                if '\\258\\' in image_files[0]:
+                    group = random.sample(image_files, group_size)
+            else:
+                group.extend(random.sample(neg, group_size-len(group)))
             lDict = {'ballooning': -1, 'inflammation': -1, 'steatosis': -1, 'fibrosis': -1}
             # 将组转换为元组，以便可以加入到集合中进行比较
             group_tuple = tuple(sorted(group))
@@ -212,7 +319,23 @@ class MILDataset(Dataset):
                             lDict[k] = 5
                         elif k == 'inflammation' or k == 'steatosis':
                             lDict[k] = 3
-                image_groups.append((group, lDict))
+
+                if lDict['fibrosis'] == 5 and len(f) > 0:
+                    if counter_f5 > num_groups/3:
+                        continue
+                    else:
+                        counter_f5 += 1
+                        image_groups.append((group, lDict))
+                elif lDict['steatosis'] == 0 and len(s) > 0:
+                    if counter_s0 > num_groups:
+                        continue
+                    else:
+                        counter_s0 += 1
+                        image_groups.append((group, lDict))
+                else:
+                    image_groups.append((group, lDict))
+
+
                 seen_groups.add(group_tuple)
             counter += 1
             # 如果已经获得了所需数量的组，则退出循环
