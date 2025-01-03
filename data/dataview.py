@@ -97,6 +97,7 @@ def draw2x2bar(**kwargs):
 '''
 def view_mtl_bags():
     data_dir = r'./outputs/bags'
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     dataset = MILDataset(data_dir, transform=data_transforms['train'])
     train_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     ballooning = {x:0 for x in range(3)}
@@ -104,7 +105,9 @@ def view_mtl_bags():
     fibrosis = {x:0 for x in range(4)}
     steatosis = {x:0 for x in range(4)}
 
+
     for bags, l1, l2, l3, l4 in tqdm(train_loader):
+        bags, l1, l2, l3, l4 = bags.to(device), l1.to(device), l2.to(device), l3.to(device), l4.to(device)
         ballooning[l1.item()] += 1
         inflammation[l2.item()] += 1
         fibrosis[l3.item()] += 1
