@@ -149,8 +149,17 @@ def get_lastingtime(time1, time2):
     print("时间差（小时）:", time_diff.total_seconds() / 3600)
     print("时间差（天）:", time_diff.days)
 
+
 def cal_loss(loss1, loss2, loss3, loss4):
-    loss = 0.5 * loss1 + 0.8 * loss2 + loss3 + 2 * loss4
+    # 计算动态权重
+    losses = torch.tensor([loss1.item(), loss2.item(), loss3.item(), loss4.item()])
+    weights = 1 / (losses + 1e-6)  # 加小常数避免除零
+    normalized_weights = weights / weights.sum()
+
+    # 加权损失
+    loss = normalized_weights[0] * loss1 + normalized_weights[1] * loss2 + normalized_weights[2] * loss3 + normalized_weights[3] * loss4
+    # total_loss = loss1 + loss2 + loss3 + loss4
+    # loss = loss1/total_loss * loss1 + loss2/total_loss * loss2 + loss3/total_loss*loss3 + loss4/total_loss * loss4
     return loss
 def train_model(model, train_loader, valid_loader, optimizer, num_epochs=25):
     history = {
