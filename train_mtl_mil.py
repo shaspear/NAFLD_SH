@@ -67,7 +67,7 @@ def load_partial_state_dict(model, state_dict):
 
 # 定义ResNet50模型
 class MultiTaskResNet50(nn.Module):
-    def __init__(self, task1_classes=2, task2_classes=5, task3_classes=3, task4_classes=3):
+    def __init__(self, task1_classes=3, task2_classes=5, task3_classes=3, task4_classes=3):
         super(MultiTaskResNet50, self).__init__()
         #self.resnet50 = models.resnet50(pretrained=True)
         self.resnet50 = torch.hub.load('moskomule/senet.pytorch', 'se_resnet50', pretrained=False)

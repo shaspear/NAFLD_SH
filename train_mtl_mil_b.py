@@ -12,7 +12,7 @@ from torch.nn import functional as F
 from PIL import Image
 from tqdm import tqdm
 
-from local_tools.MIL_Dataset import MILDataset
+from local_tools.MIL_Dataset_b import MILDataset
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 # 数据预处理
 data_transforms = {
@@ -67,7 +67,7 @@ def load_partial_state_dict(model, state_dict):
 
 # 定义ResNet50模型
 class MultiTaskResNet50(nn.Module):
-    def __init__(self, task1_classes=2, task2_classes=5, task3_classes=3, task4_classes=3):
+    def __init__(self, task1_classes=3, task2_classes=6, task3_classes=4, task4_classes=4):
         super(MultiTaskResNet50, self).__init__()
         #self.resnet50 = models.resnet50(pretrained=True)
         self.resnet50 = torch.hub.load('moskomule/senet.pytorch', 'se_resnet50', pretrained=False)
@@ -87,10 +87,10 @@ class MultiTaskResNet50(nn.Module):
         return task1_output, task2_output, task3_output, task4_output
 
 # 实例化模型
-task1_classes = 2  # 第一个任务的类别数
-task2_classes = 5  # 第二个任务的类别数
-task3_classes = 3  # 第3个任务的类别数
-task4_classes = 3  # 第4个任务的类别数
+task1_classes = 3  # 第一个任务的类别数
+task2_classes = 6 # 第二个任务的类别数
+task3_classes = 4 # 第3个任务的类别数
+task4_classes = 4 # 第4个任务的类别数
 model = MultiTaskResNet50()
 
 # 定义损失函数和优化器
@@ -242,9 +242,7 @@ def train_model(model, train_loader, valid_loader, optimizer, num_epochs=25):
             best_acc = epoch_acc
             best_model_wts = copy.deepcopy(model.state_dict())
             # 保存模型
-            torch.save(best_model_wts, f'results'
-                                       f''
-                                       f'/mil_mtl_se_epoch{epoch}_V0.3.pth')
+            torch.save(best_model_wts, f'results/mil_mtl_se_epoch{epoch}_V0.3.pth')
     endingtime = get_now_time()
     get_lastingtime(starting_time, endingtime)
     return best_model_wts, history

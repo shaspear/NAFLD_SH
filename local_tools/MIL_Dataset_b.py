@@ -86,8 +86,8 @@ class MILDataset(Dataset):
 
         for k, v in  d.items():
             counter += len(v)
-            print(f"{classname} Label:{k} is {len(v)}")
-        print(f"slide:{slide_id} has total {counter} {classname}")
+            #print(f"{classname} Label:{k} is {len(v)}")
+        #print(f"slide:{slide_id} has total {counter} {classname}")
         return counter
     @staticmethod
     def parse_data_intodicts(img_names):
@@ -171,7 +171,7 @@ class MILDataset(Dataset):
                     f.append(fn)
                 else:
                     neg.append(fn)
-        print(f"Slide:{slide_id} has positive tiles count: b-{len(b)}, f-{len(f)}, i-{len(i)}, s-{len(s)}")
+        #print(f"Slide:{slide_id} has positive tiles count: b-{len(b)}, f-{len(f)}, i-{len(i)}, s-{len(s)}")
         return b, f, i, s, neg
     @staticmethod
     def get_img_info_balanced(data_dir):
@@ -184,7 +184,7 @@ class MILDataset(Dataset):
 
             # 遍历类别
             for sub_dir in dirs:
-                # if sub_dir != '10':# only read images of folder 1
+                # if sub_dir != '444':# only read images of folder 1
                 #     continue
                 img_names = os.listdir(os.path.join(root, sub_dir))
                 img_names = list(filter(lambda x: x.endswith('.png'), img_names))
@@ -285,14 +285,14 @@ class MILDataset(Dataset):
                     tmp_smp.extend(MILDataset.get_positive_tile(b, s_b))
                     for fn in tmp_smp:
                         if "ballooning_1" in fn:
-                            flag_b1f1234 = 100000
+                            flag_b1f1234 = 1000
                 # f list
                 if l_f > 0:
                     s_f = math.ceil(k * l_f / l_total)
                     tmp_smp.extend(MILDataset.get_positive_tile(f, s_f))
                     for fn in tmp_smp:
-                        if ("fibrosisi_1" in fn) or ("fibrosisi_2" in fn) or ("fibrosisi_3" in fn) or ("fibrosisi_4" in fn):
-                            flag_b1f1234 = 100000
+                        if ("fibrosis_1" in fn) or ("fibrosis_2" in fn) or ("fibrosis_3" in fn) or ("fibrosis_4" in fn):
+                            flag_b1f1234 = 200
                 # i list
                 if l_i > 0:
                     s_i = math.ceil(k * l_i / l_total)
@@ -312,7 +312,7 @@ class MILDataset(Dataset):
                     if seen_count > threshold:
                         break
 
-        print(len(group))
+        #print(len(group))
         return group
     '''
     根据采集到的阳性样本数量，采集适量的阴性样本，以平衡数据集的分布
@@ -323,50 +323,79 @@ class MILDataset(Dataset):
         seen_groups = set()
         counter = 0
         seen_count = 0
+        expand_num = 1
+        if len(image_files) < group_size:
+            return image_groups
         while counter < num_groups:
             lDict = {'ballooning': -1, 'inflammation': -1, 'steatosis': -1, 'fibrosis': -1}
-            if len(image_files)<group_size:
-                break
+
+            groups = []
             group = random.sample(image_files, group_size)
-            group_tuple = tuple(sorted(group))
-            if group_tuple not in seen_groups:
-                for fname in group_tuple:
-                    t, l = fname[:-4].split('_')[-2:]
-                    if t == 'steatosis':
-                        l = int(l) if l.isdigit() else -1
-                        if l > 40:
-                            lDict[t] = 2
-                        elif l > 10:
-                            lDict[t] = 1
-                        elif l > 0:
-                            lDict[t] = 0
+            for fn in group:
+                #这部分代码是为了调节数据类别分布不平衡，但之前的统计未计入阴性病例，所以这段代码不需要。
+                #暂时放在这里，以备后用。
+                if "fibrosis_0" in fn:
+                    group = list(filter(lambda
+                                            x: 'fibrosis' in x,
+                                        group))
+                    expand_num = 1
+                    break
+            if len(image_files) > group_size-len(group):
+                while expand_num:
+                    tmp = group.copy()
+                    tmp.extend(random.sample(image_files, group_size - len(group)))
+                    groups.append(tmp)
+                    expand_num -= 1
+            else:
+                break
+            for group in groups:
+                group_tuple = tuple(sorted(group))
+                if group_tuple not in seen_groups:
+                    for fname in group_tuple:
+                        t, l = fname[:-4].split('_')[-2:]
+                        if t == 'steatosis':
+                            l = int(l) if l.isdigit() else -1
+                            if l > 40:
+                                lDict[t] = 2
+                            elif l > 10:
+                                lDict[t] = 1
+                            elif l > 0:
+                                lDict[t] = 0
+                            else:
+                                lDict[t] = 3
                         else:
-                            lDict[t] = 3
-                    else:
-                        if l.isdigit():
-                            l = int(l)
-                            if (l > lDict[t]):
-                                lDict[t] = l
-                for k, v in lDict.items():
-                    if v == -1:
-                        if k == 'ballooning':
-                            lDict[k] = 2
-                        elif k == 'fibrosis':
-                            lDict[k] = 5
-                        elif k == 'inflammation' or k == 'steatosis':
-                            lDict[k] = 3
-                image_groups.append((group, lDict))
-                seen_groups.add(group_tuple)
-                counter += 1
+                            if l.isdigit():
+                                l = int(l)
+                                if (l > lDict[t]):
+                                    lDict[t] = l
+                    for k, v in lDict.items():
+                        if v == -1:
+                            if k == 'ballooning':
+                                lDict[k] = 2
+                            elif k == 'fibrosis':
+                                lDict[k] = 5
+                            elif k == 'inflammation' or k == 'steatosis':
+                                lDict[k] = 3
+                    MILDataset.b_c[lDict['ballooning']] += 1
+                    MILDataset.f_c[lDict['fibrosis']] += 1
+                    MILDataset.i_c[lDict['inflammation']] += 1
+                    MILDataset.s_c[lDict['steatosis']] += 1
+                    image_groups.append((group, lDict))
+                    seen_groups.add(group_tuple)
+                    counter += 1
             else:
                 seen_count += 1
                 if seen_count > threshold:
                     break
         return image_groups
+
+    b_c = {x: 0 for x in range(3)}
+    f_c = {x: 0 for x in range(6)}
+    i_c = {x: 0 for x in range(4)}
+    s_c = {x: 0 for x in range(4)}
     @staticmethod
     def sample_balanced_groups(image_files, num_groups=10, group_size=3):
-        # 获取所有图片文件名
-        # image_files = [f for f in os.listdir(image_folder) if os.path.isfile(os.path.join(image_folder, f))]
+
         random.shuffle(image_files)  # 打乱顺序以确保随机性
         #b, f, i, s = MILDataset.parse_data_intodicts(image_files)
         b, f, i, s, neg = MILDataset.parse_data_PosNeg(image_files)
@@ -377,60 +406,63 @@ class MILDataset(Dataset):
         sample_pos_tiles = MILDataset.sample_enumerate(b, f, i, s, group_size, 5)
         for spt in sample_pos_tiles:
             group = spt
+            groups = []
+            expand_num = 1
+            for fn in group:
+                if "ballooning_1" in fn:
+                    expand_num = 20
+
+                if ("fibrosis_1" in fn) or ("fibrosis_2" in fn) or ("fibrosis_3" in fn) or ("fibrosis_4" in fn):
+                    expand_num = 20
             if len(neg)>group_size-len(spt):
-                group.extend(random.sample(neg, group_size-len(spt)))
+                while expand_num:
+                    group.extend(random.sample(neg, group_size-len(spt)))
+                    groups.append(group)
+                    expand_num -= 1
             else:
                 break
-        # 不断地随机采样，直到获得所需数量的不重复组
-        # while len(image_groups) < num_groups:
-        #     if counter > num_groups:
-        #         break
-        #     if len(image_files) < group_size:
-        #         break
-        #     group = MILDataset.sample_tiles(b, f, i, s, 1)
-        #     #print(f"sample_tiles get {len(group)} positive samples")
-        #     if len(neg)<group_size-len(group):
-        #         print(image_files[0])
-        #         if '\\258\\' in image_files[0]:
-        #             group = random.sample(image_files, group_size)
-        #     else:
-        #         group.extend(random.sample(neg, group_size-len(group)))
-            lDict = {'ballooning': -1, 'inflammation': -1, 'steatosis': -1, 'fibrosis': -1}
-            # 将组转换为元组，以便可以加入到集合中进行比较
-            group_tuple = tuple(sorted(group))
 
-            # 如果这个组之前没有出现过，则添加到结果中
-            if group_tuple not in seen_groups:
-                for fname in group_tuple:
-                    t, l = fname[:-4].split('_')[-2:]
-                    if t == 'steatosis':
-                        l = int(l) if l.isdigit() else -1
-                        if l > 40:
-                            lDict[t] = 2
-                        elif l > 10:
-                            lDict[t] = 1
-                        elif l > 0:
-                            lDict[t] = 0
+            for group in groups:
+                lDict = {'ballooning': -1, 'inflammation': -1, 'steatosis': -1, 'fibrosis': -1}
+                # 将组转换为元组，以便可以加入到集合中进行比较
+                group_tuple = tuple(sorted(group))
+
+                # 如果这个组之前没有出现过，则添加到结果中
+                if group_tuple not in seen_groups:
+                    for fname in group_tuple:
+                        t, l = fname[:-4].split('_')[-2:]
+                        if t == 'steatosis':
+                            l = int(l) if l.isdigit() else -1
+                            if l > 40:
+                                lDict[t] = 2
+                            elif l > 10:
+                                lDict[t] = 1
+                            elif l > 0:
+                                lDict[t] = 0
+                            else:
+                                lDict[t] = 3
                         else:
-                            lDict[t] = 3
-                    else:
-                        if l.isdigit():
-                            l = int(l)
-                            if(l > lDict[t]) :
-                                lDict[t] = l
-                for k,v in lDict.items():
-                    if v == -1:
-                        if k == 'ballooning':
-                            lDict[k] = 2
-                        elif k == 'fibrosis':
-                            lDict[k] = 5
-                        elif k == 'inflammation' or k == 'steatosis':
-                            lDict[k] = 3
-                image_groups.append((group, lDict))
-                seen_groups.add(group_tuple)
-            counter += 1
+                            if l.isdigit():
+                                l = int(l)
+                                if(l > lDict[t]) :
+                                    lDict[t] = l
+                    for k,v in lDict.items():
+                        if v == -1:
+                            if k == 'ballooning':
+                                lDict[k] = 2
+                            elif k == 'fibrosis':
+                                lDict[k] = 5
+                            elif k == 'inflammation' or k == 'steatosis':
+                                lDict[k] = 3
+                    MILDataset.b_c[lDict['ballooning']] += 1
+                    MILDataset.f_c[lDict['fibrosis']] += 1
+                    MILDataset.i_c[lDict['inflammation']] += 1
+                    MILDataset.s_c[lDict['steatosis']] += 1
+                    image_groups.append((group, lDict))
+                    seen_groups.add(group_tuple)
+                counter += 1
         neg_groups = MILDataset.sample_neg_groups(neg, len(sample_pos_tiles), group_size)
-        print(len(neg_groups))
+        #print(len(neg_groups))
         image_groups.extend(neg_groups)
         return image_groups
 
