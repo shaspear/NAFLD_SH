@@ -98,16 +98,17 @@ criterion1 = nn.CrossEntropyLoss()
 criterion2 = nn.CrossEntropyLoss()
 criterion3 = nn.CrossEntropyLoss()
 criterion4 = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.01)
 
 
 # 实例化模型
 
 # 加载预训练参数
-pretrained_model_path = './results/mil_mtl_se_epoch3_V0.3.pth'
+pretrained_model_path = './results/mil_mtl_se_epoch4_V0.4b.pth'
 if os.path.exists(pretrained_model_path):
     pretrained_dict = torch.load(pretrained_model_path)
     load_partial_state_dict(model, pretrained_dict)
+    print(f"{pretrained_model_path} was loaded")
 
 # 数据加载
 data_dir = r'E:\myproject\nafld\data\outputs\bags'
@@ -232,7 +233,7 @@ def train_model(model, train_loader, valid_loader, optimizer, num_epochs=25):
         accuracy2 = correct2 / len(valid_dataset)
         accuracy3 = correct3 / len(valid_dataset)
         accuracy4 = correct4 / len(valid_dataset)
-        epoch_acc = 0.3*accuracy1 + 0.4*accuracy2 + 0.8*accuracy3 + accuracy4
+        epoch_acc = accuracy1 + accuracy2 + accuracy3 + accuracy4
         epoch_loss = val_loss.item() / len(valid_loader)
         print(f'\nValidation  Accuracy1: {accuracy1:.4f}, '
               f'Accuracy2: {accuracy2:.4f}',
@@ -247,11 +248,11 @@ def train_model(model, train_loader, valid_loader, optimizer, num_epochs=25):
         history['val_loss'].append(epoch_loss)
         history['val_acc'].append(epoch_acc)
         # 深拷贝模型
-        if epoch_acc > best_acc:
+        if (epoch+1)%5 == 0:
             best_acc = epoch_acc
             best_model_wts = copy.deepcopy(model.state_dict())
             # 保存模型
-            torch.save(best_model_wts, f'results/mil_mtl_se_epoch{epoch}_V0.3.pth')
+            torch.save(best_model_wts, f'results/mil_mtl_se_epoch{epoch}_V0.4b.pth')
     endingtime = get_now_time()
     get_lastingtime(starting_time, endingtime)
     return best_model_wts, history
@@ -259,7 +260,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
 # 开始训练
-best_wts, history = train_model(model, train_loader, valid_loader, optimizer, num_epochs=50)
+best_wts, history = train_model(model, train_loader, valid_loader, optimizer, num_epochs=30)
 from datetime import date
 # 保存history为CSV文件
 with open(f'history_mil_mtl_{date.today()}.csv', 'w', newline='') as file:
