@@ -2,3 +2,4 @@ outputs/
 data/outputs/
 *.pyc
 *.png
+*.csv
