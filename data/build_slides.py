@@ -1,4 +1,4 @@
-BASEDIR_HUMAN_LP = "./data/outputs/bags"
+BASEDIR_HUMAN_LP = "E:\\myproject\\DL_BASED_NAFLD\\CNN"
 BASEDIR_MOUSE_LP = "E:\\models\\Deep_learning_for_liver_NAS_and_fibrosis_scoring-master\\model\\liver"
 
 OUTPUT_DIR = "./outputs/bags/"
@@ -11,7 +11,6 @@ import torchvision.utils as vutils
 import torch
 from PIL import Image
 import torchvision.transforms as transforms
-from local_tools.MIL_Dataset_c3 import MILDataset
 
 def ensure_directory_exists(directory):
     if not os.path.exists(directory):
@@ -53,14 +52,6 @@ def traverse_directory(directory):
 
                 counter += 1
     print(f'total {counter} files were found')
-
-'''
-将tiles从slides取出，并保存到新的文件夹下，方便观察。
-'''
-def build_bags(data_dir):
-    bags_info = MILDataset.get_img_info_balanced(data_dir)
-    for b, l in bags_info:
-        print(b)
 
 # 使用示例
 directory_path = BASEDIR_HUMAN_LP  # 替换为你的目录路径
